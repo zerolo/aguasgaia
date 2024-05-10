@@ -34,14 +34,7 @@ class AguasGaia:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
                     res = await response.json()
                     self.token = res["token"]["token"]
-                    self.session_cookies = ";".join(
-                        list(
-                            map(
-                                lambda l: l.split(";")[0], 
-                                response.headers.getall("Set-Cookie")
-                            )
-                        )
-                    )
+                    self.session_cookies = "".join([x.key+"="+x.value+";" for x in self.websession.cookie_jar]) 
                     return res
                 raise Exception("Can't login in the API")
             except aiohttp.ClientError as err:
