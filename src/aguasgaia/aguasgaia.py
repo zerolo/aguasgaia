@@ -75,6 +75,7 @@ class AguasGaia:
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
+
         if subscription_id is None:
             if self.selected_subscription_id is not None:
                 subscription_id = self.selected_subscription_id
@@ -101,6 +102,7 @@ class AguasGaia:
         _LOGGER.debug("AguasGaia API InvoiceHistory")
 
         if subscription_id is None:
+
             if self.selected_subscription_id is not None:
                 subscription_id = self.selected_subscription_id
             else:
