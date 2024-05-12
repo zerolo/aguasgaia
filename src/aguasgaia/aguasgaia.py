@@ -15,7 +15,7 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class AguasGaia:
 
-    def __init__(self, websession, username, password):
+    def __init__(self, websession, username, password, subscription_id):
         self.last_invoice = None
         self.last_consumption = None
         self.invoice_history = None
@@ -27,6 +27,7 @@ class AguasGaia:
         self.websession = websession
         self.username = username
         self.password = password
+        self._subscription_id = subscription_id
 
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
