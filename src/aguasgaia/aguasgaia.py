@@ -3,7 +3,6 @@ import aiohttp
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from random import randint
 
 from .const import DEFAULT_HEADERS, ENDPOINT, INVOICEHISTORY_ENDDATE_PARAM, INVOICEHISTORY_PATH, \
     INVOICEHISTORY_STARTDATE_PARAM, INVOICEHISTORY_SUBSCRIPTION_PARAM, JSON_CONTENT, LASTDOC_PATH, \
@@ -73,7 +72,7 @@ class AguasGaia:
             except aiohttp.ClientError as err:
                 _LOGGER.error("Subscriptions Error: %s", err)
 
-    async def get_last_invoice(self, subscription_id=None):
+    async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
         if subscription_id is None and self.selected_subscription_id is not None:
@@ -134,7 +133,7 @@ class AguasGaia:
                 _LOGGER.error("invoice history data Error: %s", err)
                 return
 
-    async def get_last_consumption(self, subscription_id=None):
+    async def get_last_consumption(self, subscription_id=None) -> Consumption:
         _LOGGER.debug("AguasGaia API Last Consumption")
 
         if subscription_id is None:
