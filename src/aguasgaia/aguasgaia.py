@@ -75,10 +75,12 @@ class AguasGaia:
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
-        if subscription_id is None and self.selected_subscription_id is not None:
-            subscription_id = self.selected_subscription_id
-        else:
-            raise Exception("No subscriptionID found")
+
+        if subscription_id is None:
+            if self.selected_subscription_id is not None:
+                subscription_id = self.selected_subscription_id
+            else:
+                raise Exception("No subscriptionID found")
 
         url = ENDPOINT + LASTDOC_PATH + "?" + LASTDOC_SUBSCRIPTION_PARAM + "=" + subscription_id
         headers = self.get_auth_headers()
@@ -100,7 +102,12 @@ class AguasGaia:
         _LOGGER.debug("AguasGaia API InvoiceHistory")
 
         if subscription_id is None:
-            subscription_id = self.selected_subscription_id
+
+            if self.selected_subscription_id is not None:
+                subscription_id = self.selected_subscription_id
+            else:
+                raise Exception("No subscriptionID found")
+
         today = datetime.now()
         year_ago = today - relativedelta(years=1)
         url = "{url}?{param1}={param1_value}&{param2}={param2_value}&{param3}={param3_value}".format(
@@ -137,7 +144,10 @@ class AguasGaia:
         _LOGGER.debug("AguasGaia API Last Consumption")
 
         if subscription_id is None:
-            subscription_id = self.selected_subscription_id
+            if self.selected_subscription_id is not None:
+                subscription_id = self.selected_subscription_id
+            else:
+                raise Exception("No subscriptionID found")
 
         url = ENDPOINT + LASTCONSUMPTION_PATH + "?" + LASTCONSUMPTION_SUBSCRIPTION_PARAM + "=" + subscription_id
         headers = self.get_auth_headers()
