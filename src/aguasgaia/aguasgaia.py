@@ -17,9 +17,10 @@ _LOGGER.setLevel(logging.DEBUG)
 class AguasGaia:
 
     def __init__(self, websession, username, password):
+        self.last_invoice = None
         self.last_consumption = None
         self.invoice_history = None
-        self.last_invoice = None
+        self._last_invoice = None
         self.selected_subscription_id = None
         self.subscriptions = None
         self.session_cookies = None
@@ -87,16 +88,17 @@ class AguasGaia:
         async with self.websession.get(url, headers=headers) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
-                    self.last_invoice = await response.json()
-                    if len(self.last_invoice) == 0:
+                    self._last_invoice = await response.json()
+                    if len(self._last_invoice) == 0:
                         raise Exception("Empty Response")
             except Exception as err:
                 _LOGGER.error("last document data Error: %s", err)
-
-            return Invoice(
-                invoice_value=self.last_invoice[0]["dadosPagamento"]["valor"],
-                invoice_attributes=self.last_invoice[0]
+            
+            self.last_invoice = Invoice(
+                invoice_value=self._last_invoice[0]["dadosPagamento"]["valor"],
+                invoice_attributes=self._last_invoice[0]
             )
+            return self.last_invoice
 
     async def get_invoice_history(self, subscription_id=None):
         _LOGGER.debug("AguasGaia API InvoiceHistory")
