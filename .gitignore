@@ -1,2 +1,8 @@
+.vscode
+.idea
+*.egg-info/
 __pycache__
+build
+dist
+venv
 main.py
