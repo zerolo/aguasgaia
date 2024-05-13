@@ -1,5 +1,4 @@
 import logging
-import aiohttp
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -27,6 +26,29 @@ class AguasGaia:
         self._username = username
         self._password = password
 
+    async def __api_request(self, url: str, method="get", data=None):
+        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data) as response:
+            try:
+                if response.status == 200 and response.content_type == JSON_CONTENT:
+                    return await response.json()
+                else:
+                    raise Exception("HTTP Request Error: %s", str(response.status)+" "+str(response.content_type))
+            except Exception as err:
+                _LOGGER.error("API request error: %s", err)
+                return None
+
+    def __get_auth_headers(self):
+        _LOGGER.debug("AguasGaia API AuthHeaders")
+        headers = {**DEFAULT_HEADERS}
+        if self._token is not None:
+            headers["X-Auth-Token"] = self._token
+        if self._session_cookies is not None:
+            headers["Cookie"] = self._session_cookies
+        return headers
+
+    def get_subscription(self):
+        return self._selected_subscription_id
+
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
         url = ENDPOINT + LOGIN_PATH
@@ -43,15 +65,6 @@ class AguasGaia:
             return True
         return False
 
-    def __get_auth_headers(self):
-        _LOGGER.debug("AguasGaia API AuthHeaders")
-        headers = {**DEFAULT_HEADERS}
-        if self._token is not None:
-            headers["X-Auth-Token"] = self._token
-        if self._session_cookies is not None:
-            headers["Cookie"] = self._session_cookies
-        return headers
-
     async def get_subscriptions(self):
         _LOGGER.debug("AguasGaia API Subscriptions")
 
@@ -63,7 +76,7 @@ class AguasGaia:
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
-        subscription_id = self.__get_subscription_id(subscription_id)
+        subscription_id = subscription_id or self._selected_subscription_id
 
         url = ENDPOINT + LASTDOC_PATH + "?" + LASTDOC_SUBSCRIPTION_PARAM + "=" + subscription_id
 
@@ -78,7 +91,7 @@ class AguasGaia:
     async def get_invoice_history(self, subscription_id=None):
         _LOGGER.debug("AguasGaia API Invoice History")
 
-        subscription_id = self.__get_subscription_id(subscription_id)
+        subscription_id = subscription_id or self._selected_subscription_id
 
         today = datetime.now()
         year_ago = today - relativedelta(years=1)
@@ -106,7 +119,7 @@ class AguasGaia:
     async def get_last_consumption(self, subscription_id=None) -> Consumption:
         _LOGGER.debug("AguasGaia API Last Consumption")
 
-        subscription_id = self.__get_subscription_id(subscription_id)
+        subscription_id = subscription_id or self._selected_subscription_id
 
         url = ENDPOINT + LASTCONSUMPTION_PATH + "?" + LASTCONSUMPTION_SUBSCRIPTION_PARAM + "=" + subscription_id
 
@@ -120,21 +133,4 @@ class AguasGaia:
         else:
             raise Exception("No consumption data found")
 
-    async def __api_request(self, url: str, method="get", data=None):
-        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data) as response:
-            try:
-                if response.status == 200 and response.content_type == JSON_CONTENT:
-                    return await response.json()
-                else:
-                    raise Exception("HTTP Request Error: %s", str(response.status)+" "+str(response.content_type))
-            except Exception as err:
-                _LOGGER.error("API request error: %s", err)
-                return None
 
-    def __get_subscription_id(self, subscription_id):
-        if subscription_id is not None:
-            return subscription_id
-        elif self._selected_subscription_id is not None:
-            return self._selected_subscription_id
-        else:
-            raise Exception("No subscriptionID found")
