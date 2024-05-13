@@ -3,7 +3,6 @@ import aiohttp
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-
 from .const import DEFAULT_HEADERS, ENDPOINT, INVOICEHISTORY_ENDDATE_PARAM, INVOICEHISTORY_PATH, \
     INVOICEHISTORY_STARTDATE_PARAM, INVOICEHISTORY_SUBSCRIPTION_PARAM, JSON_CONTENT, LASTDOC_PATH, \
     LASTDOC_SUBSCRIPTION_PARAM, LOGIN_PATH, PWD_PARAM, SUBSCRIPTIONS_PATH, USER_PARAM, LASTCONSUMPTION_PATH, \
@@ -16,7 +15,8 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class AguasGaia:
 
-    def __init__(self, websession, username, password):
+
+    def __init__(self, websession, username, password, subscription_id):
         self.last_invoice = None
         self.last_consumption = None
         self.invoice_history = None
@@ -28,6 +28,7 @@ class AguasGaia:
         self.websession = websession
         self.username = username
         self.password = password
+        self._subscription_id = subscription_id
 
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
@@ -45,7 +46,7 @@ class AguasGaia:
                     self.token = res["token"]["token"]
                     self.session_cookies = "".join([x.key + "=" + x.value + ";" for x in self.websession.cookie_jar])
                     return res
-                raise Exception("Can't login in the API")
+                raise Exception("Can't login in the API "+str(response.status)+":"+response.content_type)
             except aiohttp.ClientError as err:
                 _LOGGER.error("Login error: %s", err)
                 return
@@ -76,7 +77,6 @@ class AguasGaia:
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
-
         if subscription_id is None:
             if self.selected_subscription_id is not None:
                 subscription_id = self.selected_subscription_id
@@ -93,7 +93,7 @@ class AguasGaia:
                         raise Exception("Empty Response")
             except Exception as err:
                 _LOGGER.error("last document data Error: %s", err)
-            
+
             self.last_invoice = Invoice(
                 invoice_value=self._last_invoice[0]["dadosPagamento"]["valor"],
                 invoice_attributes=self._last_invoice[0]
