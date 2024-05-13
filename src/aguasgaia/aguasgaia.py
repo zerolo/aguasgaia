@@ -15,20 +15,18 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class AguasGaia:
 
-
     def __init__(self, websession, username, password, subscription_id):
         self.last_invoice = None
         self.last_consumption = None
         self.invoice_history = None
         self._last_invoice = None
-        self.selected_subscription_id = None
+        self._selected_subscription_id = subscription_id
         self.subscriptions = None
         self.session_cookies = None
         self.token = None
         self.websession = websession
         self.username = username
         self.password = password
-        self._subscription_id = subscription_id
 
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
@@ -46,7 +44,7 @@ class AguasGaia:
                     self.token = res["token"]["token"]
                     self.session_cookies = "".join([x.key + "=" + x.value + ";" for x in self.websession.cookie_jar])
                     return res
-                raise Exception("Can't login in the API "+str(response.status)+":"+response.content_type)
+                raise Exception("Can't login in the API " + str(response.status) + ":" + response.content_type)
             except aiohttp.ClientError as err:
                 _LOGGER.error("Login error: %s", err)
                 return
@@ -68,7 +66,7 @@ class AguasGaia:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
                     res = await response.json()
                     self.subscriptions = res
-                    self.selected_subscription_id = str(res[0]["subscriptionId"])
+                    # self._selected_subscription_id = str(res[0]["subscriptionId"])
                     return res
                 raise Exception("Can't retrieve subscriptions")
             except aiohttp.ClientError as err:
@@ -78,8 +76,8 @@ class AguasGaia:
         _LOGGER.debug("AguasGaia API LastDocData")
 
         if subscription_id is None:
-            if self.selected_subscription_id is not None:
-                subscription_id = self.selected_subscription_id
+            if self._selected_subscription_id is not None:
+                subscription_id = self._selected_subscription_id
             else:
                 raise Exception("No subscriptionID found")
 
@@ -105,8 +103,8 @@ class AguasGaia:
 
         if subscription_id is None:
 
-            if self.selected_subscription_id is not None:
-                subscription_id = self.selected_subscription_id
+            if self._selected_subscription_id is not None:
+                subscription_id = self._selected_subscription_id
             else:
                 raise Exception("No subscriptionID found")
 
@@ -146,8 +144,8 @@ class AguasGaia:
         _LOGGER.debug("AguasGaia API Last Consumption")
 
         if subscription_id is None:
-            if self.selected_subscription_id is not None:
-                subscription_id = self.selected_subscription_id
+            if self._selected_subscription_id is not None:
+                subscription_id = self._selected_subscription_id
             else:
                 raise Exception("No subscriptionID found")
 
