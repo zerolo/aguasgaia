@@ -16,97 +16,69 @@ _LOGGER.setLevel(logging.DEBUG)
 class AguasGaia:
 
     def __init__(self, websession, username, password, subscription_id):
-        self.last_invoice = None
-        self.last_consumption = None
-        self.invoice_history = None
         self._last_invoice = None
+        self._last_consumption = None
+        self._invoice_history = None
         self._selected_subscription_id = subscription_id
-        self.subscriptions = None
-        self.session_cookies = None
-        self.token = None
-        self.websession = websession
-        self.username = username
-        self.password = password
+        self._subscriptions = None
+        self._session_cookies = None
+        self._token = None
+        self._websession = websession
+        self._username = username
+        self._password = password
 
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
         url = ENDPOINT + LOGIN_PATH
 
         data = {
-            USER_PARAM: self.username,
-            PWD_PARAM: self.password
+            USER_PARAM: self._username,
+            PWD_PARAM: self._password
         }
 
-        async with self.websession.post(url, headers=DEFAULT_HEADERS, json=data) as response:
-            try:
-                if response.status == 200 and response.content_type == JSON_CONTENT:
-                    res = await response.json()
-                    self.token = res["token"]["token"]
-                    self.session_cookies = "".join([x.key + "=" + x.value + ";" for x in self.websession.cookie_jar])
-                    return res
-                raise Exception("Can't login in the API " + str(response.status) + ":" + response.content_type)
-            except aiohttp.ClientError as err:
-                _LOGGER.error("Login error: %s", err)
-                return
+        res = await self.__api_request(url, method="post", data=data)
+        if res is not None:
+            self._token = res["token"]["token"]
+            self._session_cookies = "".join([x.key + "=" + x.value + ";" for x in self._websession.cookie_jar])
+            return True
+        return False
 
-    def get_auth_headers(self):
+    def __get_auth_headers(self):
         _LOGGER.debug("AguasGaia API AuthHeaders")
-        return {
-            **DEFAULT_HEADERS,
-            "X-Auth-Token": self.token,
-            "Cookie": self.session_cookies
-        }
+        headers = {**DEFAULT_HEADERS}
+        if self._token is not None:
+            headers["X-Auth-Token"] = self._token
+        if self._session_cookies is not None:
+            headers["Cookie"] = self._session_cookies
+        return headers
 
     async def get_subscriptions(self):
         _LOGGER.debug("AguasGaia API Subscriptions")
+
         url = ENDPOINT + SUBSCRIPTIONS_PATH
-        headers = self.get_auth_headers()
-        async with self.websession.get(url, headers=headers) as response:
-            try:
-                if response.status == 200 and response.content_type == JSON_CONTENT:
-                    res = await response.json()
-                    self.subscriptions = res
-                    # self._selected_subscription_id = str(res[0]["subscriptionId"])
-                    return res
-                raise Exception("Can't retrieve subscriptions")
-            except aiohttp.ClientError as err:
-                _LOGGER.error("Subscriptions Error: %s", err)
+
+        self._subscriptions = await self.__api_request(url)
+        return self._subscriptions
 
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
         _LOGGER.debug("AguasGaia API LastDocData")
 
-        if subscription_id is None:
-            if self._selected_subscription_id is not None:
-                subscription_id = self._selected_subscription_id
-            else:
-                raise Exception("No subscriptionID found")
+        subscription_id = self.__get_subscription_id(subscription_id)
 
         url = ENDPOINT + LASTDOC_PATH + "?" + LASTDOC_SUBSCRIPTION_PARAM + "=" + subscription_id
-        headers = self.get_auth_headers()
-        async with self.websession.get(url, headers=headers) as response:
-            try:
-                if response.status == 200 and response.content_type == JSON_CONTENT:
-                    self._last_invoice = await response.json()
-                    if len(self._last_invoice) == 0:
-                        raise Exception("Empty Response")
-            except Exception as err:
-                _LOGGER.error("last document data Error: %s", err)
 
-            self.last_invoice = Invoice(
-                invoice_value=self._last_invoice[0]["dadosPagamento"]["valor"],
-                invoice_attributes=self._last_invoice[0]
-            )
-            return self.last_invoice
+        invoice = await self.__api_request(url)
+
+        self._last_invoice = Invoice(
+            invoice_value=invoice[0]["dadosPagamento"]["valor"],
+            invoice_attributes=invoice[0]
+        )
+        return self._last_invoice
 
     async def get_invoice_history(self, subscription_id=None):
-        _LOGGER.debug("AguasGaia API InvoiceHistory")
+        _LOGGER.debug("AguasGaia API Invoice History")
 
-        if subscription_id is None:
-
-            if self._selected_subscription_id is not None:
-                subscription_id = self._selected_subscription_id
-            else:
-                raise Exception("No subscriptionID found")
+        subscription_id = self.__get_subscription_id(subscription_id)
 
         today = datetime.now()
         year_ago = today - relativedelta(years=1)
@@ -127,41 +99,42 @@ class AguasGaia:
             param3=INVOICEHISTORY_SUBSCRIPTION_PARAM,
             param3_value=subscription_id
         )
-        print(url)
-        headers = self.get_auth_headers()
-        async with self.websession.get(url, headers=headers) as response:
-            try:
-                if response.status == 200 and response.content_type == JSON_CONTENT:
-                    res = await response.json()
-                    self.invoice_history = res
-                    return res
-                raise Exception("Can't retrieve invoice history data")
-            except aiohttp.ClientError as err:
-                _LOGGER.error("invoice history data Error: %s", err)
-                return
+
+        self._invoice_history = await self.__api_request(url)
+        return self._invoice_history
 
     async def get_last_consumption(self, subscription_id=None) -> Consumption:
         _LOGGER.debug("AguasGaia API Last Consumption")
 
-        if subscription_id is None:
-            if self._selected_subscription_id is not None:
-                subscription_id = self._selected_subscription_id
-            else:
-                raise Exception("No subscriptionID found")
+        subscription_id = self.__get_subscription_id(subscription_id)
 
         url = ENDPOINT + LASTCONSUMPTION_PATH + "?" + LASTCONSUMPTION_SUBSCRIPTION_PARAM + "=" + subscription_id
-        headers = self.get_auth_headers()
-        async with self.websession.get(url, headers=headers) as response:
+
+        self._last_consumption = await self.__api_request(url)
+
+        if len(self._last_consumption[0]["funcoesContador"]) != 0:
+            return Consumption(
+                consumption_value=self._last_consumption[0]["funcoesContador"][0]["ultimaLeitura"],
+                consumption_attributes=self._last_consumption[0]
+            )
+        else:
+            raise Exception("No consumption data found")
+
+    async def __api_request(self, url: str, method="get", data=None):
+        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
-                    self.last_consumption = await response.json()
-                    if len(self.last_consumption) == 0:
-                        raise Exception("Empty Response")
+                    return await response.json()
+                else:
+                    raise Exception("HTTP Request Error: %s", str(response.status)+" "+str(response.content_type))
             except Exception as err:
-                _LOGGER.error("last consumption data Error: %s", err)
+                _LOGGER.error("API request error: %s", err)
+                return None
 
-            if len(self.last_consumption[0]["funcoesContador"]) != 0:
-                return Consumption(
-                    consumption_value=self.last_consumption[0]["funcoesContador"][0]["ultimaLeitura"],
-                    consumption_attributes=self.last_consumption[0]
-                )
+    def __get_subscription_id(self, subscription_id):
+        if subscription_id is not None:
+            return subscription_id
+        elif self._selected_subscription_id is not None:
+            return self._selected_subscription_id
+        else:
+            raise Exception("No subscriptionID found")
