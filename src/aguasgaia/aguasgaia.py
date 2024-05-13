@@ -15,6 +15,7 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class AguasGaia:
 
+
     def __init__(self, websession, username, password, subscription_id):
         self.last_invoice = None
         self.last_consumption = None
