@@ -26,11 +26,17 @@ class AguasGaia:
         self._username = username
         self._password = password
 
-    async def __api_request(self, url: str, method="get", data=None):
+    async def __api_request(self, url: str, method="get", data=None, return_cookies=False):
         async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
-                    return await response.json()
+                    json_response = await response.json()
+                    if return_cookies:
+                        return {
+                            "response": json_response,
+                            "cookies": response.cookies
+                        }
+                    return json_response
                 else:
                     raise Exception("HTTP Request Error: %s", str(response.status)+" "+str(response.content_type))
             except Exception as err:
@@ -58,11 +64,13 @@ class AguasGaia:
             PWD_PARAM: self._password
         }
 
-        res = await self.__api_request(url, method="post", data=data)
+        res = await self.__api_request(url, method="post", data=data, return_cookies=True)
         if res is not None:
-            self._token = res["token"]["token"]
-            self._session_cookies = "".join([x.key + "=" + x.value + ";" for x in self._websession.cookie_jar])
-            return True
+            self._token = res.get("response", {}).get("token", {}).get("token", None)
+            cookies = res.get("cookies", [])
+            self._session_cookies = "".join([cookies[x].key + "=" + cookies[x].value + ";" for x in cookies])
+            if self._token is not None and self._session_cookies is not None:
+                return True
         return False
 
     async def get_subscriptions(self):
