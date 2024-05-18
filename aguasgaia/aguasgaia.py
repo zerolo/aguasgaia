@@ -26,8 +26,8 @@ class AguasGaia:
         self._username = username
         self._password = password
 
-    async def __api_request(self, url: str, method="get", data=None, return_cookies=False):
-        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data) as response:
+    async def __api_request(self, url: str, method="get", data=None, return_cookies=False, params=None):
+        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data, params=params) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
                     json_response = await response.json()
@@ -86,9 +86,9 @@ class AguasGaia:
 
         subscription_id = subscription_id or self._selected_subscription_id
 
-        url = ENDPOINT + LASTDOC_PATH + "?" + LASTDOC_SUBSCRIPTION_PARAM + "=" + subscription_id
+        url = ENDPOINT + LASTDOC_PATH
 
-        invoice = await self.__api_request(url)
+        invoice = await self.__api_request(url, params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
 
         self._last_invoice = Invoice(
             invoice_value=invoice[0]["dadosPagamento"]["valor"],
@@ -103,25 +103,24 @@ class AguasGaia:
 
         today = datetime.now()
         year_ago = today - relativedelta(years=1)
-        url = "{url}?{param1}={param1_value}&{param2}={param2_value}&{param3}={param3_value}".format(
-            url=ENDPOINT + INVOICEHISTORY_PATH,
-            param1=INVOICEHISTORY_ENDDATE_PARAM,
-            param1_value="{year}-{month}-{day}".format(
-                year=today.year,
-                month=today.month,
-                day=today.day
-            ),
-            param2=INVOICEHISTORY_STARTDATE_PARAM,
-            param2_value="{year}-{month}-{day}".format(
-                year=year_ago.year,
-                month=year_ago.month,
-                day=year_ago.day
-            ),
-            param3=INVOICEHISTORY_SUBSCRIPTION_PARAM,
-            param3_value=subscription_id
-        )
+        url = ENDPOINT + INVOICEHISTORY_PATH
 
-        self._invoice_history = await self.__api_request(url)
+        self._invoice_history = await self.__api_request(
+            url,
+            params={
+                INVOICEHISTORY_ENDDATE_PARAM: "{year}-{month}-{day}".format(
+                    year=today.year,
+                    month=today.month,
+                    day=today.day
+                ),
+                INVOICEHISTORY_STARTDATE_PARAM: "{year}-{month}-{day}".format(
+                    year=year_ago.year,
+                    month=year_ago.month,
+                    day=year_ago.day
+                ),
+                INVOICEHISTORY_SUBSCRIPTION_PARAM: subscription_id
+            }
+        )
         return self._invoice_history
 
     async def get_last_consumption(self, subscription_id=None) -> Consumption:
@@ -129,9 +128,9 @@ class AguasGaia:
 
         subscription_id = subscription_id or self._selected_subscription_id
 
-        url = ENDPOINT + LASTCONSUMPTION_PATH + "?" + LASTCONSUMPTION_SUBSCRIPTION_PARAM + "=" + subscription_id
+        url = ENDPOINT + LASTCONSUMPTION_PATH
 
-        self._last_consumption = await self.__api_request(url)
+        self._last_consumption = await self.__api_request(url, params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
 
         if len(self._last_consumption[0]["funcoesContador"]) != 0:
             return Consumption(
