@@ -64,29 +64,6 @@ def setup_mocks():
     mock_post_get_last_consumption = create_mock(200, consumption_response, token_response, cookies)
     mock_post_failure = create_mock(200, subscriptions_response, token_no_response, cookies)
 
-    '''
-    mock_post_success = aiohttp.ClientSession()
-    mock_post_success.post = MagicMock()
-    mock_post_success.post.return_value.__aenter__.return_value.status = 200
-    mock_post_success.post.return_value.__aenter__.return_value.content_type = "application/json"
-    mock_post_success.post.return_value.__aenter__.return_value.json.return_value = {
-        "token": {
-            "token": "my_token"
-        }
-    }
-    
-    
-    mock_post_failure = aiohttp.ClientSession()
-    mock_post_failure.post = MagicMock()
-    mock_post_failure.post.return_value.__aenter__.return_value.status = 200
-    mock_post_failure.post.return_value.__aenter__.return_value.content_type = "application/json"
-    mock_post_failure.post.return_value.__aenter__.return_value.json.return_value = {
-        "no_token": {
-            "no_token": "my_token"
-        }
-    }
-    '''
-
     yield {
         "post_get_success": mock_post_get_subscriptions,
         "mock_post_get_last_invoice": mock_post_get_last_invoice,
