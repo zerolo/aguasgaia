@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
+
 from dateutil.relativedelta import relativedelta
 
 from .const import DEFAULT_HEADERS, ENDPOINT, INVOICEHISTORY_ENDDATE_PARAM, INVOICEHISTORY_PATH, \
     INVOICEHISTORY_STARTDATE_PARAM, INVOICEHISTORY_SUBSCRIPTION_PARAM, JSON_CONTENT, LASTDOC_PATH, \
-    LASTDOC_SUBSCRIPTION_PARAM, LOGIN_PATH, PWD_PARAM, SUBSCRIPTIONS_PATH, USER_PARAM, LASTCONSUMPTION_PATH, \
+    LOGIN_PATH, PWD_PARAM, SUBSCRIPTIONS_PATH, USER_PARAM, LASTCONSUMPTION_PATH, \
     LASTCONSUMPTION_SUBSCRIPTION_PARAM
 from .models import Consumption, Invoice
 
@@ -88,12 +89,9 @@ class AguasGaia:
 
         url = ENDPOINT + LASTDOC_PATH
 
-        invoice = await self.__api_request(url, params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
+        invoice_payload = await self.__api_request(url, params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
 
-        self._last_invoice = Invoice(
-            invoice_value=invoice[0]["dadosPagamento"]["valor"],
-            invoice_attributes=invoice[0]
-        )
+        self._last_invoice = Invoice(invoice_payload)
         return self._last_invoice
 
     async def get_invoice_history(self, subscription_id=None):
@@ -130,14 +128,16 @@ class AguasGaia:
 
         url = ENDPOINT + LASTCONSUMPTION_PATH
 
-        self._last_consumption = await self.__api_request(url, params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
+        last_consumption_payload = await self.__api_request(
+            url,
+            params={LASTCONSUMPTION_SUBSCRIPTION_PARAM: subscription_id})
 
-        if len(self._last_consumption[0]["funcoesContador"]) != 0:
-            return Consumption(
-                consumption_value=self._last_consumption[0]["funcoesContador"][0]["ultimaLeitura"],
-                consumption_attributes=self._last_consumption[0]
-            )
-        else:
+        self._last_consumption = Consumption(last_consumption_payload)
+
+        if self._last_consumption.consumption_value == 0 and self._last_consumption.consumption_attributes == {}:
             raise Exception("No consumption data found")
+
+        return self._last_consumption
+
 
 
