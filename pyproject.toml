@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aguasgaia"
 authors = [{ name = "Jose Rolo", email = "ze.p.rolo@gmail.com" }]
-version = "0.0.17"
+version = "0.0.18"
 description = "Python library to retrieve information from \"Aguas de Gaia\" portal"
 readme = "README.md"
 requires-python = ">=3.9"
