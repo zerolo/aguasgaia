@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from http.cookies import SimpleCookie
 
 from aguasgaia import AguasGaia
+from aguasgaia.models import Subscription
 
 
 def create_mock(status_code, get_json_response, post_json_response, cookies):
@@ -35,9 +36,20 @@ def setup_mocks():
             "no_token": "my_token"
         }
     }
-    subscriptions_response = {
-        "subscriptions": ["SUB1", "SUB2"]
-    }
+    subscriptions_response = [
+        {
+            "subscriptionId": "456454",
+            "clientAddress": "PT",
+            "activationDate": "today",
+            "isActive": True
+        },
+        {
+            "subscriptionId": "1236453",
+            "clientAddress": "PT",
+            "activationDate": "tomorrow",
+            "isActive": False
+        }
+    ]
     invoice_response = [
         {
             "dadosPagamento": {
@@ -76,7 +88,7 @@ def setup_mocks():
 async def test_login_success(setup_mocks):
     mock = setup_mocks.get("post_get_success")
 
-    aguas = AguasGaia(mock, "", "", "123")
+    aguas = AguasGaia(mock, "", "")
     response = await aguas.login()
 
     assert response
@@ -88,7 +100,7 @@ async def test_login_success(setup_mocks):
 async def test_login_failed(setup_mocks):
     mock = setup_mocks.get("post_failure")
 
-    aguas = AguasGaia(mock, "", "", "")
+    aguas = AguasGaia(mock, "", "")
     response = await aguas.login()
 
     assert not response
@@ -100,13 +112,14 @@ async def test_login_failed(setup_mocks):
 async def test_get_subscriptions_success(setup_mocks):
     mock_post_get_success = setup_mocks.get("post_get_success")
 
-    aguas = AguasGaia(mock_post_get_success, "", "", "")
+    aguas = AguasGaia(mock_post_get_success, "", "")
 
     response = await aguas.login()
     assert response
 
     subscriptions = await aguas.get_subscriptions()
-    assert subscriptions.get("subscriptions", None) == ["SUB1", "SUB2"]
+    assert len(subscriptions) == 2
+    assert subscriptions[0].subscription_id == "456454" or subscriptions[0].subscription_id == "1236453"
 
     await mock_post_get_success.close()
 
@@ -115,7 +128,7 @@ async def test_get_subscriptions_success(setup_mocks):
 async def test_get_last_invoice_success(setup_mocks):
     mock_post_get_last_invoice = setup_mocks.get("mock_post_get_last_invoice")
 
-    aguas = AguasGaia(mock_post_get_last_invoice, "", "", "")
+    aguas = AguasGaia(mock_post_get_last_invoice, "", "")
 
     response = await aguas.login()
     assert response
@@ -132,7 +145,7 @@ async def test_get_last_invoice_success(setup_mocks):
 async def test_get_invoice_history_success(setup_mocks):
     mock_post_get_last_invoice = setup_mocks.get("mock_post_get_last_invoice")
 
-    aguas = AguasGaia(mock_post_get_last_invoice, "", "", "")
+    aguas = AguasGaia(mock_post_get_last_invoice, "", "")
 
     response = await aguas.login()
     assert response
@@ -148,7 +161,7 @@ async def test_get_invoice_history_success(setup_mocks):
 async def test_get_last_consumption_success(setup_mocks):
     mock_post_get_last_consumption = setup_mocks.get("mock_post_get_last_consumption")
 
-    aguas = AguasGaia(mock_post_get_last_consumption, "", "", "")
+    aguas = AguasGaia(mock_post_get_last_consumption, "", "")
 
     response = await aguas.login()
     assert response
