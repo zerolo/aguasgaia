@@ -7,7 +7,7 @@ from .const import DEFAULT_HEADERS, ENDPOINT, INVOICEHISTORY_ENDDATE_PARAM, INVO
     INVOICEHISTORY_STARTDATE_PARAM, INVOICEHISTORY_SUBSCRIPTION_PARAM, JSON_CONTENT, LASTDOC_PATH, \
     LOGIN_PATH, PWD_PARAM, SUBSCRIPTIONS_PATH, USER_PARAM, LASTCONSUMPTION_PATH, \
     LASTCONSUMPTION_SUBSCRIPTION_PARAM
-from .models import Consumption, Invoice
+from .models import Consumption, Invoice, Subscription
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -15,7 +15,7 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class AguasGaia:
 
-    def __init__(self, websession, username, password, subscription_id):
+    def __init__(self, websession, username, password, subscription_id=None):
         self._last_invoice = None
         self._last_consumption = None
         self._invoice_history = None
@@ -28,7 +28,8 @@ class AguasGaia:
         self._password = password
 
     async def __api_request(self, url: str, method="get", data=None, return_cookies=False, params=None):
-        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data, params=params) as response:
+        async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data,
+                                                     params=params) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
                     json_response = await response.json()
@@ -39,9 +40,9 @@ class AguasGaia:
                         }
                     return json_response
                 else:
-                    raise Exception("HTTP Request Error: %s", str(response.status)+" "+str(response.content_type))
+                    raise Exception(f"HTTP Request Error: %s", str(response.status) + " " + str(response.content_type))
             except Exception as err:
-                _LOGGER.error("API request error: %s", err)
+                _LOGGER.error(f"API request error: %s", err)
                 return None
 
     def __get_auth_headers(self):
@@ -53,8 +54,11 @@ class AguasGaia:
             headers["Cookie"] = self._session_cookies
         return headers
 
-    def get_subscription(self):
-        return self._selected_subscription_id
+    def get_selected_subscription(self):
+        return str(self._selected_subscription_id)
+
+    def set_selected_subscription(self, sub: Subscription):
+        self._selected_subscription_id = sub.subscription_id
 
     async def login(self):
         _LOGGER.debug("AguasGaia API Login")
@@ -70,16 +74,22 @@ class AguasGaia:
             self._token = res.get("response", {}).get("token", {}).get("token", None)
             cookies = res.get("cookies", [])
             self._session_cookies = "".join([cookies[x].key + "=" + cookies[x].value + ";" for x in cookies])
-            if self._token is not None and self._session_cookies is not None:
-                return True
-        return False
+            if self._token is None or self._session_cookies is None:
+                return False
 
-    async def get_subscriptions(self):
+        if self._selected_subscription_id is None:
+            subscriptions = await self.get_subscriptions()
+            if subscriptions is None or len(subscriptions) == 0:
+                return False
+            self.set_selected_subscription(subscriptions.pop())
+        return True
+
+    async def get_subscriptions(self) -> list[Subscription]:
         _LOGGER.debug("AguasGaia API Subscriptions")
 
         url = ENDPOINT + SUBSCRIPTIONS_PATH
-
-        self._subscriptions = await self.__api_request(url)
+        subscription_payload = await self.__api_request(url)
+        self._subscriptions = [Subscription(sub) for sub in await self.__api_request(url)]
         return self._subscriptions
 
     async def get_last_invoice(self, subscription_id=None) -> Invoice:
@@ -138,6 +148,3 @@ class AguasGaia:
             raise Exception("No consumption data found")
 
         return self._last_consumption
-
-
-
