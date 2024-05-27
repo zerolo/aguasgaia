@@ -1,9 +1,9 @@
 # Aguas de Gaia API
 
 ## Installation
-
-    pip install .
-
+```bash
+$ pip install aguasgaia
+```
 ## Usage
 ```python
 import asyncio
@@ -14,7 +14,7 @@ from aguasgaia import AguasGaia
 async def main():
     session = aiohttp.ClientSession()
 
-    aguas = AguasGaia(session, "<USERNAME>", "<PASSWORD>", subscription_id="<SUBSCRIPTION_ID>")
+    aguas = AguasGaia(session, "<USERNAME>", "<PASSWORD>")
     print("LOGIN: ", await aguas.login())
 
     print("SUBSCRIPTIONS:\n{0}".format(await aguas.get_subscriptions()))
@@ -33,5 +33,11 @@ if __name__ == "__main__":
 ```
 
 ## Tests
-
-    TBD
+Make sure pytest asyncio is installed
+```bash
+$ pip install pytest-asyncio
+```
+Execute the tests
+```bash
+$ pytest tests/
+```
