@@ -29,7 +29,7 @@ class AguasGaia:
 
     async def __api_request(self, url: str, method="get", data=None, return_cookies=False, params=None):
         async with getattr(self._websession, method)(url, headers=self.__get_auth_headers(), json=data,
-                                                     params=params) as response:
+                                                     params=params, ssl=False) as response:
             try:
                 if response.status == 200 and response.content_type == JSON_CONTENT:
                     json_response = await response.json()
