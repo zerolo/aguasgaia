@@ -1,4 +1,4 @@
-ENDPOINT = "https://uportal.livre.cgi.com/uPortal2/gaia"
+ENDPOINT = "https://portal.ucloud.cgi.com/uPortal2/gaia"
 LOGIN_PATH = "/login"
 SUBSCRIPTIONS_PATH = "/Subscription/listSubscriptions"
 LASTDOC_PATH = "/Billing/getDadosUltimoDocumento"
